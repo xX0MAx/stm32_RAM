@@ -1,6 +1,5 @@
 #include <stdbool.h>
-
-#define API_ADDRESS 0x200004E8
+#include <stdint.h>
 
 typedef struct {
     void (*println)(const char*);
@@ -9,7 +8,7 @@ typedef struct {
     void (*digitalWrite)(bool);
 } RAM_API;
 
-void _start() {
+void _start(uint32_t API_ADDRESS) {
     RAM_API* api = (RAM_API*)API_ADDRESS;
 
     int counter = 0;

@@ -1,7 +1,8 @@
 #include <SD.h>
-#include <SPI.h>
 
 #define SD_PIN PA4
+#define LED_PIN PC13
+
 #define CODE_BUFFER_SIZE 512 //Значение можно менять, в зависимости от веса кода, главное выравнивание учитывать
 
 //Тут начало секции для API, если она не нужна просто вырежьте её
@@ -16,13 +17,13 @@ RAM_API api __attribute__((aligned(4))) __attribute__((section(".ram_api"))) = {
     .println = [](const char* str) { Serial1.println(str); },
     .print_int = [](int value) { Serial1.println(value); },
     .delay = [](uint32_t ms) { delay(ms); },
-    .digitalWrite = [](bool state) { digitalWrite(PC13, state); }
+    .digitalWrite = [](bool state) { digitalWrite(LED_PIN, state); }
 };
-//Тут конец, кстати если кол-во методов будет нечётное, то адруино может прописать, что есть проблемы с выравниванием, но их нет, тут уже всё продумано) 
+//Тут конец, кстати если кол-во методов будет нечётное, то ардуино может прописать, что есть проблемы с выравниванием, но их нет, тут уже всё продумано) 
 
 uint8_t codeBuffer[CODE_BUFFER_SIZE] __attribute__((aligned(4))) __attribute__((section(".ram_code")));
 
-typedef void (*ram_function)(void);
+typedef void (*ram_function)(uint32_t API_ADDRESS);
 
 class RAMLoader {
 public:
@@ -66,7 +67,7 @@ public:
         //Ну и тут чуть чуть API
         Serial1.print("API address: 0x");
         Serial1.println((uint32_t)&api, HEX);
-        //Просто для отображения, куда API сохранилось, что бы для кода на SD указать адрес
+        //Просто для отображения, куда API сохранилось
         
         return bytesRead > 0;
     }
@@ -87,7 +88,7 @@ public:
         asm volatile ("dsb" ::: "memory");
         asm volatile ("isb" ::: "memory");
         
-        func();
+        func((uint32_t)&api);
         
         Serial1.println("Returned from RAM code");
         return true;
@@ -100,7 +101,7 @@ void setup() {
     Serial1.begin(9600);
     delay(5000);
     
-    pinMode(PC13, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
     
     if (ramLoader.initializeSD()) {
         if (ramLoader.loadBinToRAM("example_name.bin")) { //Укажите имя вашего файла
@@ -108,12 +109,12 @@ void setup() {
         }
     }
     
-    digitalWrite(PC13, HIGH);
+    digitalWrite(LED_PIN, HIGH);
 
     Serial1.println("Back to main loop");
 }
 
 void loop() {
-    digitalWrite(PC13, !digitalRead(PC13));
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
     delay(2000);
 }
